@@ -1,0 +1,120 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Détails de la réservation{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-calendar3"></i> Détails de la réservation</h1>
+            <div class="btn-group">
+                <a href="{{ path('app_reservation_edit', {'id': reservation.id}) }}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil"></i> Modifier
+                </a>
+                <a href="{{ path('app_reservation_index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Retour à la liste
+                </a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <h2 class="h4 mb-3">
+                            <i class="bi bi-building me-2"></i>{{ reservation.room }}
+                        </h2>
+                        <div class="d-flex align-items-center text-muted mb-3">
+                            <i class="bi bi-calendar-date me-2"></i>
+                            <span>{{ reservation.date|format_date('full', '', null, 'gregorian', 'fr')|capitalize }}</span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-4">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
+                                    <i class="bi bi-clock text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="text-muted small">Début</div>
+                                    <div class="fw-bold">{{ reservation.startTime|date('H:i') }}</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
+                                    <i class="bi bi-clock-history text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="text-muted small">Fin</div>
+                                    <div class="fw-bold">{{ reservation.endTime|date('H:i') }}</div>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <div class="bg-primary bg-opacity-10 p-3 rounded-3 me-3">
+                                    <i class="bi bi-hourglass-split text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="text-muted small">Durée</div>
+                                    <div class="fw-bold">
+                                        {% set diff = date(reservation.endTime|date('H:i')).diff(date(reservation.startTime|date('H:i'))) %}
+                                        {{ '%02d'|format(diff.h) }}h{{ '%02d'|format(diff.i) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <div class="display-4 text-primary mb-3">
+                                    <i class="bi bi-calendar-check"></i>
+                                </div>
+                                <h3 class="h5">Réservation confirmée</h3>
+                                <p class="text-muted small mb-0">
+                                    Créée le {{ reservation.createdAt ? reservation.createdAt|date('d/m/Y à H:i') : 'Date inconnue' }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-top pt-4 mt-4">
+                    <h3 class="h5 mb-3">
+                        <i class="bi bi-gear me-2"></i>Actions
+                    </h3>
+                    <div class="d-flex gap-2">
+                        <a href="{{ path('app_reservation_edit', {'id': reservation.id}) }}" 
+                           class="btn btn-outline-primary">
+                            <i class="bi bi-pencil me-2"></i>Modifier la réservation
+                        </a>
+                        <form method="post" 
+                              action="{{ path('app_reservation_delete', {'id': reservation.id}) }}" 
+                              onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette réservation ?');"
+                              class="d-inline">
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ reservation.id) }}">
+                            <button class="btn btn-outline-danger">
+                                <i class="bi bi-trash me-2"></i>Supprimer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ path('app_reservation_index') }}" class="btn btn-link text-decoration-none">
+                <i class="bi bi-arrow-left me-1"></i> Retour à la liste des réservations
+            </a>
+            <a href="{{ path('app_reservation_edit', {'id': reservation.id}) }}" class="btn btn-primary">
+                <i class="bi bi-pencil me-1"></i> Modifier cette réservation
+            </a>
+        </div>
+    </div>
+
+    <style>
+        .card {
+            border: none;
+            border-radius: 0.5rem;
+        }
+        .bg-opacity-10 {
+            background-color: rgba(var(--bs-primary-rgb), 0.1);
+        }
+    </style>
+{% endblock %}

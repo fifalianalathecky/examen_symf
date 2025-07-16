@@ -1,0 +1,496 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Vérifier la disponibilité d'une salle{% endblock %}
+
+{% block body %}
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card shadow-sm border-0 rounded-3 overflow-hidden mb-4">
+                    <div class="card-header bg-primary text-white py-3">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="bi bi-calendar-check display-6"></i>
+                            </div>
+                            <div>
+                                <h1 class="h4 mb-0">Vérifier la disponibilité d'une salle</h1>
+                                <p class="mb-0 small opacity-75">Vérifiez les créneaux disponibles pour votre réunion</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        {{ form_start(form, {'attr': {'class': 'needs-validation', 'novalidate': 'novalidate'}}) }}
+                        
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    {{ form_widget(form.room, {
+                                        'attr': {
+                                            'class': 'form-select' ~ (form.room.vars.valid ? '' : ' is-invalid'),
+                                            'placeholder': 'Sélectionnez une salle',
+                                            'data-controller': 'availability'
+                                        }
+                                    }) }}
+                                    {{ form_label(form.room, 'Salle de réunion') }}
+                                    <div class="invalid-feedback">
+                                        {{ form_errors(form.room) }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    {{ form_widget(form.date, {
+                                        'attr': {
+                                            'class': 'form-control' ~ (form.date.vars.valid ? '' : ' is-invalid'),
+                                            'min': 'now'|date('Y-m-d'),
+                                            'data-availability-target': 'date'
+                                        }
+                                    }) }}
+                                    {{ form_label(form.date, 'Date de réservation') }}
+                                    <div class="invalid-feedback">
+                                        {{ form_errors(form.date) }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    {{ form_widget(form.startTime, {
+                                        'attr': {
+                                            'class': 'form-select' ~ (form.startTime.vars.valid ? '' : ' is-invalid'),
+                                            'data-availability-target': 'startTime'
+                                        }
+                                    }) }}
+                                    {{ form_label(form.startTime, 'Heure de début') }}
+                                    <div class="invalid-feedback">
+                                        {{ form_errors(form.startTime) }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-floating">
+                                    {{ form_widget(form.endTime, {
+                                        'attr': {
+                                            'class': 'form-select' ~ (form.endTime.vars.valid ? '' : ' is-invalid'),
+                                            'data-availability-target': 'endTime'
+                                        }
+                                    }) }}
+                                    {{ form_label(form.endTime, 'Heure de fin') }}
+                                    <div class="invalid-feedback">
+                                        {{ form_errors(form.endTime) }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                            <a href="{{ path('app_reservation_index') }}" class="btn btn-outline-secondary me-md-2">
+                                <i class="bi bi-arrow-left me-2"></i>Retour
+                            </a>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-search me-2"></i>Vérifier la disponibilité
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {{ form_end(form) }}
+                    </div>
+                </div>
+                </div>
+
+                {# Affichage des messages flash #}
+                <div class="mt-4">
+                    {% for label, messages in app.flashes(['success', 'warning', 'error', 'info']) %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ label }} alert-dismissible fade show" role="alert">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi 
+                                        {% if label == 'success' %}bi-check-circle-fill
+                                        {% elseif label == 'warning' %}bi-exclamation-triangle-fill
+                                        {% elseif label == 'error' %}bi-x-circle-fill
+                                        {% else %}bi-info-circle-fill{% endif %}
+                                        me-2"></i>
+                                    <div>
+                                        {{ message|raw }}
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+
+                {# Résultats de la recherche de disponibilité #}
+                {% if hasSearched %}
+                    {% if form.vars.value.room is not empty %}
+                        <div class="card border-0 shadow-sm mt-4">
+                            <div class="card-body p-0">
+                                <div class="alert alert-{{ isAvailable ? 'success' : 'warning' }} alert-dismissible fade show rounded-3" role="alert">
+                                    <div class="d-flex align-items-center">
+                                        <div class="flex-shrink-0 me-3">
+                                            <i class="bi {{ isAvailable ? 'bi-check-circle-fill' : 'bi-exclamation-triangle-fill' }} fs-2"></i>
+                                        </div>
+                                        <div>
+                                            <h5 class="alert-heading">{{ isAvailable ? 'Salle disponible !' : 'Salle non disponible' }}</h5>
+                                            <p class="mb-0">{{ message }}</p>
+                                            
+                                            {% if isAvailable %}
+                                                <div class="mt-3">
+                                                    <a href="{{ path('app_reservation_new', {
+                                                        'room': form.vars.value.room,
+                                                        'date': form.vars.value.date|date('Y-m-d'),
+                                                        'startTime': form.vars.value.startTime|date('H:i'),
+                                                        'endTime': form.vars.value.endTime|date('H:i')
+                                                    }) }}" class="btn btn-success">
+                                                        <i class="bi bi-calendar-plus me-2"></i>Réserver maintenant
+                                                    </a>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if availableRooms is defined and availableRooms|length > 0 %}
+                        <div class="card border-0 shadow-sm mt-4">
+                            <div class="card-header bg-light py-3">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-list-check me-2"></i>
+                                    {{ availableRooms|length }} salles disponibles pour cette plage horaire
+                                </h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush">
+                                    {% for room in availableRooms %}
+                                        <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                            <div class="d-flex align-items-center">
+                                                <div class="me-3 text-primary">
+                                                    <i class="bi bi-building fs-4"></i>
+                                                </div>
+                                                <div>
+                                                    <h6 class="mb-0 fw-bold">{{ room }}</h6>
+                                                    <small class="text-muted">Capacité: 10 personnes</small>
+                                                </div>
+                                            </div>
+                                            <a href="{{ path('app_reservation_new', {
+                                                'room': room,
+                                                'date': form.vars.value.date|date('Y-m-d'),
+                                                'startTime': form.vars.value.startTime|date('H:i'),
+                                                'endTime': form.vars.value.endTime|date('H:i')
+                                            }) }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="bi bi-calendar-plus me-1"></i>Réserver
+                                            </a>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM chargé');
+            // Gestion de la validation du formulaire
+            const form = document.querySelector('form.needs-validation');
+            
+            if (form) {
+                console.log('Formulaire trouvé');
+                form.addEventListener('submit', function(event) {
+                    console.log('Soumission du formulaire');
+                    if (!form.checkValidity()) {
+                        console.log('Formulaire invalide');
+                        event.preventDefault();
+                        event.stopPropagation();
+                    } else {
+                        console.log('Formulaire valide');
+                    }
+                    
+                    form.classList.add('was-validated');
+                }, false);
+                
+                // Validation en temps réel
+                const inputs = form.querySelectorAll('input, select');
+                inputs.forEach(input => {
+                    input.addEventListener('input', function() {
+                        if (input.checkValidity()) {
+                            input.classList.remove('is-invalid');
+                            input.classList.add('is-valid');
+                        } else {
+                            input.classList.remove('is-valid');
+                            input.classList.add('is-invalid');
+                        }
+                    });
+                });
+                
+                // Validation de l'heure de fin > heure de début
+                const startTimeInput = form.querySelector('[name$="[startTime]"]');
+                const endTimeInput = form.querySelector('[name$="[endTime]"]');
+                
+                function validateTimeRange() {
+                    if (startTimeInput.value && endTimeInput.value) {
+                        const startTime = new Date('2000-01-01T' + startTimeInput.value);
+                        const endTime = new Date('2000-01-01T' + endTimeInput.value);
+                        
+                        if (endTime <= startTime) {
+                            endTimeInput.setCustomValidity('L\'heure de fin doit être postérieure à l\'heure de début');
+                            endTimeInput.classList.add('is-invalid');
+                            return false;
+                        } else {
+                            endTimeInput.setCustomValidity('');
+                            endTimeInput.classList.remove('is-invalid');
+                            return true;
+                        }
+                    }
+                    return true;
+                }
+                
+                if (startTimeInput && endTimeInput) {
+                    startTimeInput.addEventListener('change', validateTimeRange);
+                    endTimeInput.addEventListener('change', validateTimeRange);
+                }
+                
+                // Mise à jour des options d'heure en fonction de la date sélectionnée
+                const dateInput = form.querySelector('[name$="[date]"]');
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMinutes = now.getMinutes();
+                
+                if (dateInput) {
+                    dateInput.addEventListener('change', function() {
+                        const selectedDate = new Date(this.value);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        
+                        // Réinitialiser les options d'heure si la date est aujourd'hui
+                        if (selectedDate.toDateString() === today.toDateString()) {
+                            updateTimeOptions(currentHour, currentMinutes);
+                        } else {
+                            updateTimeOptions(8, 0); // Réinitialiser aux heures d'ouverture (8h)
+                        }
+                    });
+                }
+                
+                function updateTimeOptions(startHour, startMinute) {
+                    if (!startTimeInput) return;
+                    
+                    // Mettre à jour les options d'heure de début
+                    const startTimeOptions = startTimeInput.querySelectorAll('option');
+                    startTimeOptions.forEach(option => {
+                        const [hour, minute] = option.value.split(':').map(Number);
+                        if (hour < startHour || (hour === startHour && minute < startMinute)) {
+                            option.disabled = true;
+                        } else {
+                            option.disabled = false;
+                        }
+                    });
+                }
+                
+                // Initialiser les options d'heure si la date est aujourd'hui
+                if (dateInput) {
+                    const selectedDate = new Date(dateInput.value);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    
+                    if (selectedDate.toDateString() === today.toDateString()) {
+                        updateTimeOptions(currentHour, currentMinutes);
+                    }
+                }
+            }
+            
+            // Animation des cartes au chargement
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                
+                setTimeout(() => {
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 100 * index);
+            });
+            
+            // Gestion des tooltips Bootstrap
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+    </script>
+{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --primary-hover: #3a56d4;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-gray: #f8f9fa;
+            --border-radius: 0.5rem;
+            --box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s ease;
+        }
+        
+        body {
+            background-color: #f5f7fb;
+            color: #333;
+        }
+        
+        /* Cartes et conteneurs */
+        .card {
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            transition: var(--transition);
+            overflow: hidden;
+        }
+        
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            background-color: var(--primary-color);
+            color: white;
+            border-bottom: none;
+            padding: 1.25rem 1.5rem;
+        }
+        
+        /* Formulaires */
+        .form-control, .form-select {
+            border: 1px solid #e0e0e0;
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+        
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+        }
+        
+        .form-floating > label {
+            padding: 1rem;
+        }
+        
+        .form-floating > .form-control:focus ~ label,
+        .form-floating > .form-control:not(:placeholder-shown) ~ label,
+        .form-floating > .form-select ~ label {
+            transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
+            opacity: 0.8;
+        }
+        
+        /* Boutons */
+        .btn {
+            border-radius: 50px;
+            padding: 0.6rem 1.5rem;
+            font-weight: 500;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+        
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            border: none;
+        }
+        
+        .btn-success:hover {
+            background-color: #27ae60;
+            transform: translateY(-2px);
+        }
+        
+        /* Alertes */
+        .alert {
+            border: none;
+            border-radius: var(--border-radius);
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .alert-success {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: #27ae60;
+        }
+        
+        .alert-warning {
+            background-color: rgba(243, 156, 18, 0.15);
+            color: #d35400;
+        }
+        
+        /* Liste des salles disponibles */
+        .list-group-item {
+            border: none;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding: 1.25rem 1.5rem;
+            transition: var(--transition);
+        }
+        
+        .list-group-item:last-child {
+            border-bottom: none;
+        }
+        
+        .list-group-item:hover {
+            background-color: var(--light-gray);
+        }
+        
+        /* Icônes */
+        .bi {
+            vertical-align: middle;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .btn {
+                width: 100%;
+                margin-bottom: 0.5rem;
+            }
+            
+            .d-md-flex .btn:not(:last-child) {
+                margin-right: 0;
+                margin-bottom: 0.5rem;
+            }
+        }
+    </style>
+{% endblock %}

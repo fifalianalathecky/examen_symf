@@ -1,0 +1,118 @@
+{{ form_start(form, {'attr': {'class': 'needs-validation', 'novalidate': 'novalidate'}}) }}
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            {{ form_label(form.room, 'Salle de réunion', {'label_attr': {'class': 'form-label'}}) }}
+            {{ form_widget(form.room, {
+                'attr': {
+                    'class': 'form-select' ~ (form.room.vars.valid ? '' : ' is-invalid'),
+                    'data-availability-target': 'room',
+                }
+            }) }}
+            <div class="invalid-feedback">
+                {{ form_errors(form.room) }}
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-3">
+            {{ form_label(form.date, 'Date de réservation', {'label_attr': {'class': 'form-label'}}) }}
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                {{ form_widget(form.date, {
+                    'attr': {
+                        'class': 'form-control' ~ (form.date.vars.valid ? '' : ' is-invalid'),
+                        'data-availability-target': 'date',
+                        'min': 'now'|date('Y-m-d')
+                    }
+                }) }}
+                <div class="invalid-feedback">
+                    {{ form_errors(form.date) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            {{ form_label(form.startTime, 'Heure de début', {'label_attr': {'class': 'form-label'}}) }}
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                {{ form_widget(form.startTime, {
+                    'attr': {
+                        'class': 'form-control' ~ (form.startTime.vars.valid ? '' : ' is-invalid'),
+                        'data-availability-target': 'startTime'
+                    }
+                }) }}
+                <div class="invalid-feedback">
+                    {{ form_errors(form.startTime) }}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mb-3">
+            {{ form_label(form.endTime, 'Heure de fin', {'label_attr': {'class': 'form-label'}}) }}
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-clock-history"></i></span>
+                {{ form_widget(form.endTime, {
+                    'attr': {
+                        'class': 'form-control' ~ (form.endTime.vars.valid ? '' : ' is-invalid'),
+                        'data-availability-target': 'endTime'
+                    }
+                }) }}
+                <div class="invalid-feedback">
+                    {{ form_errors(form.endTime) }}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% set isPrefilled = form.vars.value.room is not null and form.vars.value.date is not null and form.vars.value.startTime is not null and form.vars.value.endTime is not null %}
+    
+    <div class="alert {{ isPrefilled ? 'alert-success' : 'alert-info' }} mt-4" data-availability-target="availabilityMessage">
+        <i class="bi {{ isPrefilled ? 'bi-check-circle' : 'bi-info-circle' }} me-2"></i>
+        {% if isPrefilled %}
+            La salle est disponible pour la plage horaire sélectionnée. Vous pouvez confirmer votre réservation.
+        {% else %}
+            Vérifiez la disponibilité avant de confirmer votre réservation.
+        {% endif %}
+    </div>
+    
+    <div class="d-flex justify-content-between mt-4">
+        <a href="{{ path('app_reservation_index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i> Retour à la liste
+        </a>
+        <div>
+            {% if not isPrefilled %}
+                <button type="button" class="btn btn-outline-primary me-2" data-action="availability#checkAvailability">
+                    <i class="bi bi-search me-2"></i>Vérifier la disponibilité
+                </button>
+            {% endif %}
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-2"></i>{{ isPrefilled ? 'Confirmer la réservation' : button_label|default('Enregistrer la réservation') }}
+            </button>
+        </div>
+    </div>
+{{ form_end(form) }}
+
+{# Script pour la validation côté client #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Désactiver les dates passées
+    const dateInput = document.getElementById('{{ form.date.vars.id }}');
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+    }
+
+    // Validation du formulaire
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+</script>
